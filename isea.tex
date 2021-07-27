@@ -70,7 +70,7 @@ When number of next hops changes, both algorithms change the next hop that
 packets with certain hashes would be forwarded to. The amount of this
 disruption depends on the algorithm. Under modulo-N, the mapping from
 hashes to next hop is just completely different after the number of next
-hops changes. Hash-thresholds mitigates this disruption, but is not immune
+hops changes. Hash-threshold mitigates this disruption, but is not immune
 to it either. Figure ~\ref{fig:hash-threshold-disruption} illustrates what
 happens as one next hop is removed.
 
@@ -117,13 +117,12 @@ traffic disruptions. See figure ~\ref{fig:reshash-stable} for illustration.
 \end{figure}
 
 A case where this algorithm works very well is next-hop removal. As a next
-hop is removed, any flows hitting that next hop will certainly be
-disruptied anyway. Therefore the buckets assigned to the removed next hop
-can be freely distributed among the existing next hops according to their
-weights. There is no incidental disruption, as the traffic hitting the
-buckets assigned to the other next hops keeps getting resolved to the same
-next hops as before. This is illustrated in figure
-~\ref{fig:reshash-removal}.
+hop is removed, any flows hitting that next hop will certainly be disrupted
+anyway. Therefore the buckets assigned to the removed next hop can be
+freely distributed among the existing next hops according to their weights.
+There is no incidental disruption, as the traffic hitting the buckets
+assigned to the other next hops keeps getting resolved to the same next
+hops as before. This is illustrated in figure ~\ref{fig:reshash-removal}.
 
 \begin{figure}[H]
 \includegraphics[width=3.31in]{reshash-removal.png}
@@ -374,7 +373,8 @@ software datapath), a driver ought to mark them with either
 
 A number of selftests have been added in order to check that the algorithm
 behaves in an expected manner. Specifically for testing edge cases of the
-bucket migration algorithm, faux \texttt{netdevsim} offload has been added.
+bucket migration algorithm, a faux \texttt{netdevsim} offload has been
+added.
 
 The module exposes a debugfs interface that allows marking individual
 buckets as busy. For example, to mark bucket 23 in next-hop group 10 as
@@ -387,6 +387,10 @@ These interfaces permit careful testing of the algorithm edge cases. It is
 for example possible to keep busy the buckets that belong to certain next
 hops, then lower that next hop's weight, and observe how the algorithm
 handles the transition.
+
+\section{Acknowledgments}
+Thanks to David Ahern for contribution of infrastructure for the standalone
+next-hop objects, and for review of the resilient next-hop code.
 
 \bibliographystyle{isea}
 \bibliography{isea}
