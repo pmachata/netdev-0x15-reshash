@@ -32,9 +32,9 @@ will bring the packet in question closer to the destination. A typical
 algorithm to decide which next-hop to forward the packet through is
 hash-threshold, whereby a hash derived from packet headers is compared
 against hash space ranges assigned to individual next hops. The downside of
-this algorithm is that and next hop addition, removal, and weight
-adjustment may end up redirecting flows that have previously been forwarded
-to unrelated next hops. This in turn may cause connection resets and
+this algorithm is that next hop addition, removal, and weight adjustment
+may end up redirecting flows that have previously been forwarded to
+unrelated next hops. This in turn may cause connection resets and
 performance hits. This paper presents resilient next-hop groups, an
 approach to hash space management that minimizes incidental hash space
 reassignment across next hop additions, removals, and weight adjustments.
@@ -171,23 +171,23 @@ buckets without regard to their idleness.
 In a nutshell, the algorithm works as follows. Each next hop deserves a
 certain number of buckets, according to its weight and the number of
 buckets in the hash table. In accordance with the source code, we will call
-this number a "wants count" of a next hop. In case of an event that might
-cause bucket allocation change, the wants counts for individual next hops
-are updated.
+this number a \emph{wants count} of a next hop. In case of an event that
+might cause bucket allocation change, the wants counts for individual next
+hops are updated.
 
 Next hops that have fewer buckets than their wants count, are called
-"underweight". Those that have more are "overweight". If there are no
-overweight (and therefore no underweight) next hops in the group, it is
-said to be "balanced".
+\emph{underweight}. Those that have more are \emph{overweight}. If there
+are no overweight (and therefore no underweight) next hops in the group, it
+is said to be \emph{balanced}.
 
 Each bucket maintains a last-used timer. Every time a packet is forwarded
 through a bucket, this timer is updated to current jiffies value. One
-attribute of a resilient group is then the "idle timer", which is the
+attribute of a resilient group is then the \emph{idle timer}, which is the
 amount of time that a bucket must not be hit by traffic in order for it to
-be considered "idle". Buckets that are not idle are busy.
+be considered \emph{idle}. Buckets that are not idle are busy.
 
-After assigning wants counts to next hops, an "upkeep" algorithm runs. For
-buckets:
+After assigning wants counts to next hops, an \emph{upkeep} algorithm runs.
+For buckets:
 
 \begin{itemize}
 \item that have no assigned next hop, or
@@ -200,12 +200,12 @@ underweight next hops. If, after considering all buckets in this manner,
 there are still underweight next hops, another upkeep run is scheduled to a
 future time.
 
-There may not be enough "idle" buckets to satisfy the updated wants counts
-of all next hops. Another attribute of a resilient group is the "unbalanced
-timer". This timer can be set to 0, in which case the table will stay out
-of balance until idle buckets do appear, possibly never. If set to a
-non-zero value, the value represents the period of time that the table is
-permitted to stay out of balance.
+There may not be enough \emph{idle} buckets to satisfy the updated wants
+counts of all next hops. Another attribute of a resilient group is the
+\emph{unbalanced timer}. This timer can be set to 0, in which case the
+table will stay out of balance until idle buckets do appear, possibly
+never. If set to a non-zero value, the value represents the period of time
+that the table is permitted to stay out of balance.
 
 With this in mind, we update the above list of conditions with one more
 item. Thus buckets:
@@ -234,10 +234,13 @@ configure the resilient-specific attributes of the next-hop group can be
 specified. For example:
 
 \begin{verbatim}
-# ip nexthop add id 1 via 192.0.2.2 dev dummy1
-# ip nexthop add id 2 via 198.51.100.2 dev dummy2
-# ip nexthop add id 10 group 1/2 type resilient \
-     buckets 8 idle_timer 120 unbalanced_timer 300
+# ip nexthop add id 1 via 192.0.2.2 \
+     dev dummy1
+# ip nexthop add id 2 via 198.51.100.2 \
+     dev dummy2
+# ip nexthop add id 10 group 1/2 \
+     type resilient buckets 8 \
+     idle_timer 120 unbalanced_timer 300
 \end{verbatim}
 
 ... first creates two next hops, and then groups them in a resilient group.
@@ -249,9 +252,10 @@ and various odd weight ratios can be modeled accurately.
 
 \texttt{idle\_timer} and \texttt{unbalanced\_timer} are discussed above.
 
-Individual parameters (except for the number of bucket, which is fixed) can
-be changed. E.g. in the following, only, respectively, \texttt{idle\_timer}
-and \texttt{unbalanced\_timer} are adjusted, with the other staying intact:
+Individual parameters (except for the number of buckets, which is fixed)
+can be changed. E.g. in the following, only, respectively,
+\texttt{idle\_timer} and \texttt{unbalanced\_timer} are adjusted, with the
+other staying intact:
 
 \begin{verbatim}
 Change attributes of the group
@@ -272,7 +276,7 @@ following:
 
 Here we have changed the weights of the next hops. But as explained above,
 that does not by itself change any bucket reassignments. Instead the group
-become unbalanced, because next hop 1 now has more buckets than it should
+becomes unbalanced, because next hop 1 now has more buckets than it should
 have, and next hop 2 has fewer. Then the upkeep algorithm gradually brings
 the group into balance (or not, depending on the configuration).
 
@@ -319,9 +323,9 @@ groups.
 
 The resilient algorithm hinges on the fact that it understands which next
 hop buckets are idle. In software datapath, this understanding is achieved
-by maintaining bucket activity. However, when accelerating traffic by
-offloading to capable devices, the vast majority of traffic is never seen
-by the algorithm.
+by maintaining per-bucket last-used time. However, when accelerating
+traffic by offloading to capable devices, the vast majority of traffic is
+never seen by the algorithm.
 
 A two-pronged approach is implemented to close this loophole.
 
@@ -333,13 +337,13 @@ hop is removed and the algorithm simply needs to migrate a given bucket to
 another next hop. Vetoable notifications are used for the regular table
 upkeep, as the algorithm finds new idle buckets and proposes them for
 migration. The idea is that a driver will take note of these proposals, and
-in turn will propose them to the HW, which may bounce them if hardware
+in turn will propose them to the device, which may bounce them if hardware
 datapath traffic has been using the bucket in question.
 
 The second prong is a proactive reporting by the driver towards the
 next-hop code. A new in-kernel API
 \texttt{nexthop\_res\_grp\_activity\_update()} can be called to feed an
-activity bit-vector from the device to the next-hop group. Set bits in the
+activity bit vector from the device to the next-hop group. Set bits in the
 vector are treated as if software-datapath traffic hit the corresponding
 bucket.
 
@@ -351,13 +355,13 @@ bucket.
 \label{fig:nexthop_res_grp_activity_update}
 \end{figure}
 
-This notification-based approached would be enough to implement the raw
+The notification-based approached would be enough to implement the raw
 functionality. However, it would inevitably lead to a lot of ping-pong
 between the core next-hop code, the driver and the device, as the algorithm
 would keep proposing migrations that involved busy buckets. Reporting
 through the new API makes sure that the core has a reasonable idea of what
 is going on in the device. At the same time, the notification-based
-approach is necessary to close the race between the drive report and new
+approach is necessary to close the race between the driver report and new
 hardware datapath flows popping up and making a bucket busy.
 
 \subsection{Bucket Flags}
